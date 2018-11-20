@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: bridge-template
+  annotations:
+    description: "Installation of the Birdge CORE"
+    tags: "bridge"
+objects:
+- apiVersion: apps/v1
+  kind: StatefulSet
+  metadata: 
+    name: bridge-core
+  spec:
+    selector:
+      matchLabels:
+        app: bridge-core
+    serviceName: "bridge-core" 
+    replicas: 1
+    template:
+      metadata:
+        labels: 
+          app: bridge-core
+      spec:
+        imagePullSecrets: 
+          - name: sbs-registry  
+        containers:
+          - name: bridge-core
+            imagePullPolicy: Always
+            image: sensiblebuildingscience/bridge-core 

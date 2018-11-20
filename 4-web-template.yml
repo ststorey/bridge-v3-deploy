@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: bridge-template
+  annotations:
+    description: "Installation of the Birdge WEB"
+    tags: "bridge"
+objects:
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: bridge-web-pvc
+    labels:
+      app: bridge-web
+  spec:
+    storageClassName: web-pv
+    accessModes:
+      - ReadWriteMany
+    resources:
+      requests:
+        storage: 1Gi
+
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: bridge-web-backup-pvc
+    labels:
+      app: bridge-web
+  spec:
+    storageClassName: web-backup-pv
+    accessModes:
+      - ReadWriteMany
+    resources:
+      requests:
+        storage: 1Gi        
+
+- apiVersion: apps/v1
+  kind: StatefulSet
+  metadata: 
+    name: bridge-web
+  spec:
+    selector:
+      matchLabels:
+        app: bridge-web
+    serviceName: "bridge-web"
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: bridge-web
+      spec:
+        imagePullSecrets:
+          - name: sbs-registry
+        containers:
+          - name: bridge-web
+            imagePullPolicy: Always
+            image: sensiblebuildingscience/bridge-web:v3.0.0.alpha75
+            env: 
+              - name: ENVIRONMENT
+                value: "PROD"
+            ports: 
+              - containerPort: 8000
+            volumeMounts:
+              - name: bridge-web-volume
+                mountPath: /var/www/sbsbridge/bridge_project/bridge/media/
+              - name: bridge-web-backup-volume
+                mountPath: /var/www/sbsbridge/data_archival/
+            resources: 
+              limits: 
+                memory: 1Gi
+        volumes:
+          - name: bridge-web-volume
+            persistentVolumeClaim:
+              claimName: bridge-web-pvc
+          - name: bridge-web-backup-volume
+            persistentVolumeClaim:
+              claimName: bridge-web-backup-pvc
+
+- apiVersion: v1
+  kind: Service
+  metadata: 
+    name: bridge-web
+    labels:
+      app: bridge-web
+  spec: 
+    selector: 
+      app: bridge-web
+    type: NodePort
+    ports: 
+      - port: 8000  
+        targetPort: 8000
+
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    labels:
+      app: bridge-web
+    name: bridge-web
+  spec:
+    host: sbsbridge.pathfinder.bcgov
+    port:
+      targetPort: 8000
+    to:
+      kind: Service
+      name: bridge-web
