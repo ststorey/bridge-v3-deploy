@@ -98,6 +98,9 @@ objects:
     name: bridge-web
   spec:
     host: sbsbridge.pathfinder.bcgov
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
     port:
       targetPort: 8000
     to:
